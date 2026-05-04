@@ -1,110 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Trade Diary</title>
-
-<style>
-body {
-  margin: 0;
-  background: #000;
-  color: #00ff88;
-  font-family: monospace;
-}
-
-header {
-  text-align: center;
-  padding: 20px;
-  font-size: 26px;
-  text-shadow: 0 0 10px #00ff88;
-}
-
-.container {
-  max-width: 1000px;
-  margin: auto;
-  padding: 20px;
-}
-
-input[type="date"], input[type="text"] {
-  width: 100%;
-  padding: 10px;
-  margin: 10px 0;
-  background: #000;
-  color: #00ff88;
-  border: 1px solid #00ff88;
-}
-
-button {
-  background: transparent;
-  border: 1px solid #00ff88;
-  color: #00ff88;
-  padding: 10px;
-  cursor: pointer;
-}
-
-button:hover {
-  background: #00ff88;
-  color: #000;
-}
-
-.session {
-  margin-top: 30px;
-  border: 1px solid #00ff88;
-  padding: 15px;
-}
-
-.session h2 {
-  text-align: center;
-}
-
-.trade {
-  margin-top: 15px;
-  border: 1px solid #00ff88;
-  padding: 10px;
-}
-
-.trade img {
-  width: 100%;
-  max-height: 500px;
-  object-fit: contain;
-}
-
-textarea {
-  width: 100%;
-  height: 80px;
-  margin-top: 10px;
-  background: #000;
-  color: #00ff88;
-  border: 1px solid #00ff88;
-}
-</style>
-</head>
-
-<body>
-
-<header>TRADE DIARY</header>
-
-<div class="container">
-
-  <input type="date" id="datePicker">
-
-  <div class="session">
-    <h2>EU SESSION</h2>
-    <input id="euInput" placeholder="TradingView image link">
-    <button onclick="addTrade('eu')">Add EU Trade</button>
-    <div id="euList"></div>
-  </div>
-
-  <div class="session">
-    <h2>US SESSION</h2>
-    <input id="usInput" placeholder="TradingView image link">
-    <button onclick="addTrade('us')">Add US Trade</button>
-    <div id="usList"></div>
-  </div>
-
-</div>
-
 <script type="module">
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
@@ -124,19 +17,30 @@ document.getElementById("datePicker").addEventListener("change", (e) => {
 window.addTrade = async function(session) {
   const input = document.getElementById(session + "Input");
 
-  if (!currentDate) return alert("Select date first");
-  if (!input.value) return alert("Paste TradingView link");
+  if (!currentDate) {
+    alert("Select a date first");
+    return;
+  }
 
-  const { error } = await supabase.from("trades_2").insert({
-    date: currentDate,
-    session,
-    image_url: input.value,
-    notes: ""
-  });
+  if (!input.value.trim()) {
+    alert("Paste TradingView link");
+    return;
+  }
+
+  const { error } = await supabase
+    .from("trades_2")
+    .insert([
+      {
+        date: currentDate,
+        session: session,
+        image_url: input.value.trim(),
+        notes: ""
+      }
+    ]);
 
   if (error) {
-    console.log(error);
-    alert("Error saving trade");
+    console.log("SUPABASE ERROR:", error);
+    alert(error.message);
     return;
   }
 
@@ -148,11 +52,16 @@ async function loadTrades() {
   if (!currentDate) return;
 
   ["eu", "us"].forEach(async (session) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("trades_2")
       .select("*")
       .eq("date", currentDate)
       .eq("session", session);
+
+    if (error) {
+      console.log("LOAD ERROR:", error);
+      return;
+    }
 
     const list = document.getElementById(session + "List");
     list.innerHTML = "";
@@ -195,6 +104,3 @@ async function loadTrades() {
   });
 }
 </script>
-
-</body>
-</html>
