@@ -16,12 +16,12 @@ body {
 header {
   text-align: center;
   padding: 20px;
-  font-size: 24px;
+  font-size: 26px;
   text-shadow: 0 0 10px #00ff88;
 }
 
 .container {
-  max-width: 900px;
+  max-width: 1000px;
   margin: auto;
   padding: 20px;
 }
@@ -51,17 +51,23 @@ button:hover {
 .session {
   margin-top: 30px;
   border: 1px solid #00ff88;
-  padding: 10px;
+  padding: 15px;
+}
+
+.session h2 {
+  text-align: center;
 }
 
 .trade {
+  margin-top: 15px;
   border: 1px solid #00ff88;
-  margin-top: 10px;
   padding: 10px;
 }
 
 .trade img {
   width: 100%;
+  max-height: 500px;
+  object-fit: contain;
 }
 
 textarea {
@@ -83,24 +89,29 @@ textarea {
 
   <input type="date" id="datePicker">
 
-  <h2>EU SESSION</h2>
-  <input id="euInput" placeholder="TradingView image link">
-  <button onclick="addTrade('eu')">Add EU Trade</button>
-  <div id="euList"></div>
+  <div class="session">
+    <h2>EU SESSION</h2>
+    <input id="euInput" placeholder="TradingView image link">
+    <button onclick="addTrade('eu')">Add EU Trade</button>
+    <div id="euList"></div>
+  </div>
 
-  <h2>US SESSION</h2>
-  <input id="usInput" placeholder="TradingView image link">
-  <button onclick="addTrade('us')">Add US Trade</button>
-  <div id="usList"></div>
+  <div class="session">
+    <h2>US SESSION</h2>
+    <input id="usInput" placeholder="TradingView image link">
+    <button onclick="addTrade('us')">Add US Trade</button>
+    <div id="usList"></div>
+  </div>
 
 </div>
 
-<script>
+<script type="module">
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
-const supabaseUrl = "https://ebdyavzqraejwrvaclfg.supabase.co";
-const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wcHhlcWRnc3BvaHF3Z3N3cGNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4Nzk0NzgsImV4cCI6MjA5MzQ1NTQ3OH0.Jy0zoWp2zlpktMpKG7tWbGjYAQvboo9cWKuGk6WoANo
-";
+const supabaseUrl = "https://nppxeqdgspohqwgswpcd.supabase.co";
+
+const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wcHhlcWRnc3BvaHF3Z3N3cGNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4Nzk0NzgsImV4cCI6MjA5MzQ1NTQ3OH0.Jy0zoWp2zlpktMpKG7tWbGjYAQvboo9cWKuGk6WoANo";
+
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 let currentDate = "";
@@ -113,15 +124,21 @@ document.getElementById("datePicker").addEventListener("change", (e) => {
 window.addTrade = async function(session) {
   const input = document.getElementById(session + "Input");
 
-  if (!currentDate) return alert("Pick a date");
-  if (!input.value) return alert("Paste link");
+  if (!currentDate) return alert("Select date first");
+  if (!input.value) return alert("Paste TradingView link");
 
-  await supabase.from("trades").insert({
+  const { error } = await supabase.from("trades_2").insert({
     date: currentDate,
     session,
     image_url: input.value,
     notes: ""
   });
+
+  if (error) {
+    console.log(error);
+    alert("Error saving trade");
+    return;
+  }
 
   input.value = "";
   loadTrades();
@@ -132,7 +149,7 @@ async function loadTrades() {
 
   ["eu", "us"].forEach(async (session) => {
     const { data } = await supabase
-      .from("trades")
+      .from("trades_2")
       .select("*")
       .eq("date", currentDate)
       .eq("session", session);
@@ -148,17 +165,31 @@ async function loadTrades() {
       img.src = trade.image_url;
 
       const notes = document.createElement("textarea");
-      notes.value = trade.notes;
+      notes.value = trade.notes || "";
 
       notes.onchange = async () => {
         await supabase
-          .from("trades")
+          .from("trades_2")
           .update({ notes: notes.value })
           .eq("id", trade.id);
       };
 
+      const del = document.createElement("button");
+      del.textContent = "Delete";
+
+      del.onclick = async () => {
+        await supabase
+          .from("trades_2")
+          .delete()
+          .eq("id", trade.id);
+
+        loadTrades();
+      };
+
       div.appendChild(img);
       div.appendChild(notes);
+      div.appendChild(del);
+
       list.appendChild(div);
     });
   });
