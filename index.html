@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trade Diary</title>
+
+<style>
+body {
+  margin: 0;
+  background: #000;
+  color: #00ff88;
+  font-family: monospace;
+}
+
+header {
+  text-align: center;
+  padding: 20px;
+  font-size: 24px;
+  text-shadow: 0 0 10px #00ff88;
+}
+
+.container {
+  max-width: 900px;
+  margin: auto;
+  padding: 20px;
+}
+
+input[type="date"], input[type="text"] {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+  background: #000;
+  color: #00ff88;
+  border: 1px solid #00ff88;
+}
+
+button {
+  background: transparent;
+  border: 1px solid #00ff88;
+  color: #00ff88;
+  padding: 10px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #00ff88;
+  color: #000;
+}
+
+.session {
+  margin-top: 30px;
+  border: 1px solid #00ff88;
+  padding: 10px;
+}
+
+.trade {
+  border: 1px solid #00ff88;
+  margin-top: 10px;
+  padding: 10px;
+}
+
+.trade img {
+  width: 100%;
+}
+
+textarea {
+  width: 100%;
+  height: 80px;
+  margin-top: 10px;
+  background: #000;
+  color: #00ff88;
+  border: 1px solid #00ff88;
+}
+</style>
+</head>
+
+<body>
+
+<header>TRADE DIARY</header>
+
+<div class="container">
+
+  <input type="date" id="datePicker">
+
+  <h2>EU SESSION</h2>
+  <input id="euInput" placeholder="TradingView image link">
+  <button onclick="addTrade('eu')">Add EU Trade</button>
+  <div id="euList"></div>
+
+  <h2>US SESSION</h2>
+  <input id="usInput" placeholder="TradingView image link">
+  <button onclick="addTrade('us')">Add US Trade</button>
+  <div id="usList"></div>
+
+</div>
+
+<script>
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+const supabaseUrl = "https://ebdyavzqraejwrvaclfg.supabase.co";
+const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wcHhlcWRnc3BvaHF3Z3N3cGNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4Nzk0NzgsImV4cCI6MjA5MzQ1NTQ3OH0.Jy0zoWp2zlpktMpKG7tWbGjYAQvboo9cWKuGk6WoANo
+";
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+let currentDate = "";
+
+document.getElementById("datePicker").addEventListener("change", (e) => {
+  currentDate = e.target.value;
+  loadTrades();
+});
+
+window.addTrade = async function(session) {
+  const input = document.getElementById(session + "Input");
+
+  if (!currentDate) return alert("Pick a date");
+  if (!input.value) return alert("Paste link");
+
+  await supabase.from("trades").insert({
+    date: currentDate,
+    session,
+    image_url: input.value,
+    notes: ""
+  });
+
+  input.value = "";
+  loadTrades();
+};
+
+async function loadTrades() {
+  if (!currentDate) return;
+
+  ["eu", "us"].forEach(async (session) => {
+    const { data } = await supabase
+      .from("trades")
+      .select("*")
+      .eq("date", currentDate)
+      .eq("session", session);
+
+    const list = document.getElementById(session + "List");
+    list.innerHTML = "";
+
+    (data || []).forEach(trade => {
+      const div = document.createElement("div");
+      div.className = "trade";
+
+      const img = document.createElement("img");
+      img.src = trade.image_url;
+
+      const notes = document.createElement("textarea");
+      notes.value = trade.notes;
+
+      notes.onchange = async () => {
+        await supabase
+          .from("trades")
+          .update({ notes: notes.value })
+          .eq("id", trade.id);
+      };
+
+      div.appendChild(img);
+      div.appendChild(notes);
+      list.appendChild(div);
+    });
+  });
+}
+</script>
+
+</body>
+</html>
